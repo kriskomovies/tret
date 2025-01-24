@@ -223,33 +223,33 @@ export default function DashboardPage() {
 
       {/* Referral Tree and Recent Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
+        <Card className="h-[500px] flex flex-col">
           <CardHeader>
             <CardTitle>Member Network</CardTitle>
           </CardHeader>
-          <CardContent>
-            <MemberTree data={mockUsers} className="bg-gray-50 rounded-lg h-[400px]" />
+          <CardContent className="flex-1 overflow-hidden">
+            <MemberTree data={mockUsers} className="bg-gray-50 rounded-lg h-full" />
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="h-[500px] flex flex-col">
           <CardHeader>
             <CardTitle>Recent Activity</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex-1 overflow-auto">
             <Table>
-              <TableHeader>
+              <TableHeader className="sticky top-0 bg-white z-10">
                 <TableRow>
-                  <TableCell>Type</TableCell>
-                  <TableCell>Amount</TableCell>
-                  <TableCell>Date</TableCell>
-                  <TableCell>Status</TableCell>
+                  <TableCell className="w-1/4 pl-4">Type</TableCell>
+                  <TableCell className="w-1/4">Amount</TableCell>
+                  <TableCell className="w-1/4">Date</TableCell>
+                  <TableCell className="w-1/4 pr-4">Status</TableCell>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {recentActivity.map((activity) => (
                   <TableRow key={activity.id}>
-                    <TableCell className="flex items-center gap-2">
+                    <TableCell className="flex items-center gap-2 pl-4">
                       {activity.type === 'Deposit' ? (
                         <ArrowDownRight className="w-4 h-4 text-green-500" />
                       ) : (
@@ -259,7 +259,7 @@ export default function DashboardPage() {
                     </TableCell>
                     <TableCell>${activity.amount}</TableCell>
                     <TableCell>{activity.date}</TableCell>
-                    <TableCell>
+                    <TableCell className="pr-4">
                       <Badge variant={activity.status === 'Completed' ? 'default' : 'secondary'}>
                         {activity.status}
                       </Badge>
@@ -270,13 +270,6 @@ export default function DashboardPage() {
             </Table>
           </CardContent>
         </Card>
-      </div>
-
-      {/* Floating Action Bar */}
-      <div className="fixed bottom-6 right-6 flex gap-4">
-        <Button variant="outline">View Packages</Button>
-        <Button variant="outline">Withdraw</Button>
-        <Button variant="default">Deposit</Button>
       </div>
     </div>
   );
