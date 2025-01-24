@@ -1,137 +1,178 @@
-Updated Models and Relationships for Backend Architecture
-1. User
-Fields: id, username, email, phoneNumber, password, referral (foreign key to another user), balance, lastActivity, status, membership (foreign key to the packages table).
-Relationships:
-One-to-Many with Wallet: Each user can have multiple wallets.
-One-to-Many with Deposit: Each user can have multiple deposits.
-One-to-Many with Withdrawal: Each user can have multiple withdrawals.
-Self-Referencing Many-to-Many: Users have a referral system where a user can refer others.
-2. Wallet
-Fields: id, network (e.g., Solana, Tron, Ethereum), publicKey, privateKey, balance, userId (foreign key to User).
-Relationships:
-Many-to-One with User: Each wallet belongs to a single user.
-3. Package
-Fields: id, name, price, dailyIncome.
-Relationships:
-One-to-Many with User: A user can only have one active package at a time, but many users can belong to the same package.
-4. Deposit
-Fields: id, userId (foreign key to User), amount, transactionId, status (Pending, Confirmed, Rejected), createdAt, updatedAt.
-Relationships:
-Many-to-One with User: Each deposit is tied to a single user.
-5. Withdrawal
-Fields: id, userId (foreign key to User), userWalletId (foreign key to Wallet), withdrawWallet (external address), amount, status (Pending, Approved, Rejected), network, createdAt, updatedAt.
-Relationships:
-Many-to-One with User: Each withdrawal is tied to a single user.
-Many-to-One with Wallet: The user specifies a wallet on the relevant blockchain network for the withdrawal.
-6. Application Wallet
-Fields: id, network (e.g., Solana, Tron, Ethereum), publicKey, privateKey, balance, createdAt, updatedAt.
-Purpose: Tracks the overall balance of the application for each blockchain network.
-Relationships:
-Standalone: Interacts with deposits and withdrawals for balance updates but does not have direct foreign key relationships.
-Repository Pattern Integration
-Why Use the Repository Pattern?
-The repository pattern separates the data access layer from the business logic layer, enabling:
+# Project overview
+This project is a crypto-based platform with the following key features:
 
-Cleaner code and easier testing.
-Swappable data sources (e.g., switch from Supabase to another database without rewriting logic).
-Centralized data access logic for reusability.
-Repository Pattern Implementation
-Structure:
+User Management: Users can register, log in, and manage their profiles. Each user has an associated wallet (or multiple wallets), referral relationships, and membership packages.
+Wallets: Each user can have multiple wallets for different blockchain networks (e.g., Solana, Tron, Ethereum). Wallet details such as public/private keys and individual balances are stored in the database.
+Packages: Users can purchase packages (e.g., daily income plans) which define how much they earn daily.
+Deposits & Withdrawals: Users can deposit funds to their wallets and request withdrawals to external wallets. Both deposits and withdrawals have statuses (e.g., Pending, Confirmed / Approved, Rejected).
+Referrals & Team Building: A user can refer others, creating a hierarchy tracked in a many-to-many “members” table (or a direct referral field), enabling reward/commission structures.
+Application Wallets: The platform itself has wallets to manage platform-wide assets on different blockchains.
+Supabase Storage: Files (images, documents, etc.) are stored in Supabase buckets, enabling easy file uploads and management.
 
-Repository Layer: Each model (e.g., User, Wallet, Deposit) has a dedicated repository class responsible for querying the database (e.g., UserRepository).
-Service Layer: Services interact with repositories to execute business logic (e.g., calculating referral earnings, handling deposits/withdrawals).
-Controller Layer: API routes interact with services and handle HTTP responses.
-Example Repository Implementation (Using Prisma)
+# Tech Stack
+Next.js
 
-User Repository:
+Frontend: User-facing pages and components built with React.
+Backend (API Routes): Next.js also provides a backend environment via the /api folder (or the new App Router if using Next.js 13+).
+Rendering: Server-side rendering (SSR) or static site generation (SSG) where beneficial.
+Supabase
 
-typescript
-Copy
-Edit
-// repositories/user.repository.ts
-import { PrismaClient } from "@prisma/client";
+Database: Leverage Supabase’s hosted Postgres database.
+Storage: Use Supabase buckets (e.g., “treta”) for file uploads.
+Authentication (optional): You could use Supabase Auth, but since you already have a users table, you may handle authentication manually or integrate Supabase Auth as needed.
+Prisma
 
-const prisma = new PrismaClient();
+ORM: Prisma can connect to Supabase’s Postgres database, providing a type-safe way to query and mutate your data.
+Schema Definition: Use schema.prisma to map the existing tables (users, packages, wallets, deposits, members, withdrawals, application_wallets).
+Repository Pattern: While Prisma already acts as a data access layer, you can wrap Prisma calls in repositories to keep your domain logic separate and maintain a cleaner architecture.
+# Tables and buckets already created
 
-export class UserRepository {
-  async findById(userId: number) {
-    return prisma.user.findUnique({
-      where: { id: userId },
-      include: { wallets: true, deposits: true, withdrawals: true },
-    });
-  }
+Supabase storage and bucket already created
+Supabase storage bucket: "treta"
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(100) NOT NULL UNIQUE,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    phonenumber VARCHAR(20) UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    referral INT REFERENCES users(id) ON DELETE SET NULL, -- Referring user ID
+    balance DECIMAL(20, 2) DEFAULT 0.0, -- Overall balance for the user
+    last_activity TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    status VARCHAR(20) DEFAULT 'Active', -- e.g., Active, Suspended
+    membership INT REFERENCES packages(id) ON DELETE SET NULL, -- Current package
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 
-  async create(data: any) {
-    return prisma.user.create({ data });
-  }
+-- Packages Table: Store available membership packages
+CREATE TABLE packages (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    price DECIMAL(20, 2) NOT NULL,
+    daily_income DECIMAL(20, 2) NOT NULL, -- Daily income for the package
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 
-  async update(userId: number, data: any) {
-    return prisma.user.update({
-      where: { id: userId },
-      data,
-    });
-  }
+-- Wallets Table: Store details of wallets associated with users
+CREATE TABLE wallets (
+    id SERIAL PRIMARY KEY,
+    user_id INT REFERENCES users(id) ON DELETE CASCADE, -- Wallet belongs to a user
+    network VARCHAR(50) NOT NULL, -- Blockchain network (e.g., Solana, Tron, Ethereum)
+    public_key VARCHAR(255) NOT NULL UNIQUE, -- Public key of the wallet
+    private_key VARCHAR(255) NOT NULL, -- Encrypted private key of the wallet
+    balance DECIMAL(20, 8) DEFAULT 0.0, -- Wallet-specific balance
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Deposits Table: Track deposits made by users
+CREATE TABLE deposits (
+    id SERIAL PRIMARY KEY,
+    user_id INT REFERENCES users(id) ON DELETE CASCADE,
+    amount DECIMAL(20, 2) NOT NULL,
+    transaction_id VARCHAR(255) UNIQUE NOT NULL,
+    status VARCHAR(20) DEFAULT 'Pending',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Members Table: Represent many-to-many relationships for referrals
+CREATE TABLE members (
+    id SERIAL PRIMARY KEY,
+    user_id INT REFERENCES users(id) ON DELETE CASCADE, -- The user who invited others
+    member_id INT REFERENCES users(id) ON DELETE CASCADE, -- The referred user
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE withdrawals (
+    id SERIAL PRIMARY KEY,
+    user_id INT REFERENCES users(id) ON DELETE CASCADE,
+    user_wallet_id INT REFERENCES wallets(id) ON DELETE CASCADE,
+    withdraw_wallet VARCHAR(255) NOT NULL,
+    amount DECIMAL(20, 2) NOT NULL,
+    network VARCHAR(50) NOT NULL,
+    status VARCHAR(20) DEFAULT 'Pending',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE application_wallets (
+    id SERIAL PRIMARY KEY,
+    network VARCHAR(50) NOT NULL UNIQUE, 
+    balance DECIMAL(20, 8) DEFAULT 0.0
+);
+
+# Requirements
+User Accounts
+
+CRUD operations for users (registration, login, profile updates).
+Manage user membership status, referral links, and overall balance.
+Wallets Management
+
+Users can create or link multiple wallets.
+Store network details, keys, and balances securely.
+Deposits and Withdrawals
+
+Ability to initiate and track deposits (with statuses like Pending, Confirmed, Rejected).
+Ability to initiate and track withdrawals to external addresses (with statuses like Pending, Approved, Rejected).
+Automatic or manual confirmation process.
+Packages
+
+Store membership packages with pricing, daily income rate, and potential duration.
+Users purchase packages and earn daily income or dividends.
+Referrals & Members
+
+Maintain a tree/hierarchy or many-to-many relationship of who referred whom.
+Possibly reward users with referral commissions based on deposit or package purchase.
+Application Wallets
+
+A set of platform-owned wallets for each blockchain network.
+Manage or track the overall platform balance and transactions.
+Supabase Storage
+
+Support file uploads to a designated bucket (e.g., “treta”).
+Users or admins can upload documents, images (possibly for KYC or profile avatars).
+API Endpoints
+
+Must provide REST endpoints to handle all the above functionalities.
+Must secure the endpoints with proper authentication and authorization checks.
+
+
+Admin(s) can manage user status, confirm or reject deposits/withdrawals, and oversee referral structures.
+# Documentation 
+## Example of uploading files to supabase storage
+import {createClient} from '@supabase/supabase.js'
+
+// Create supabase client
+import { createClient } from 'supabase/supabase-js'
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY)
+
+// Upload file to supabase storage
+const { data, error } = await supabase.storage.from('images').upload('file_path', file)
+if (error) {
+// Handle error
+} else {
+// Handle success
 }
-Deposit Repository:
 
-typescript
-Copy
-Edit
-// repositories/deposit.repository.ts
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
-
-export class DepositRepository {
-  async findByUserId(userId: number) {
-    return prisma.deposit.findMany({
-      where: { userId },
-      orderBy: { createdAt: "desc" },
-    });
-  }
-
-  async create(data: any) {
-    return prisma.deposit.create({ data });
-  }
-}
-Service Layer Example:
-
-typescript
-Copy
-Edit
-// services/user.service.ts
-import { UserRepository } from "../repositories/user.repository";
-
-const userRepository = new UserRepository();
-
-export class UserService {
-  async getUserDetails(userId: number) {
-    const user = await userRepository.findById(userId);
-    if (!user) throw new Error("User not found");
-    return user;
-  }
-
-  async registerUser(data: any) {
-    return userRepository.create(data);
-  }
-}
-Controller Layer Example:
-
-typescript
-Copy
-Edit
-// pages/api/users/[id].ts
-import { UserService } from "../../../services/user.service";
-
-const userService = new UserService();
-
-export default async function handler(req, res) {
-  const { id } = req.query;
-
-  try {
-    const user = await userService.getUserDetails(Number(id));
-    res.status(200).json(user);
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-}
+# Project structure project/
+├── prisma/
+│   ├── schema.prisma  // Prisma schema 
+├── src/
+│   ├── pages/         // Next.js pages (if using the Pages Router)
+│   │   ├── api/
+│   │   │   ├── users/
+│   │   │   │   └── index.ts  // e.g. user CRUD
+│   │   │   ├── wallets/
+│   │   │   │   └── index.ts
+│   │   │   └── ...
+│   │   └── ...
+│   ├── app/           // Next.js 13+ App Router (if using the App Router approach)
+│   ├── repositories/  // Repository classes (UserRepo, WalletRepo, etc.)
+│   ├── services/      // Business logic that calls repositories
+│   ├── components/    // Shared React components
+│   ├── utils/         // Utility functions, constants, etc.
+│   └── ...
+├── .env               // Store Supabase keys, environment variables
+├── package.json
+├── next.config.js
+└── tsconfig.json

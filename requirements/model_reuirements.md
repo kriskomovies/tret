@@ -35,12 +35,12 @@ CREATE TABLE wallets (
 -- Deposits Table: Track deposits made by users
 CREATE TABLE deposits (
     id SERIAL PRIMARY KEY,
-    user_id INT REFERENCES users(id) ON DELETE CASCADE, -- The user making the deposit
-    amount DECIMAL(20, 2) NOT NULL, -- Deposit amount
-    transaction_id VARCHAR(255) UNIQUE NOT NULL, -- Transaction ID for the deposit
-    status VARCHAR(20) DEFAULT 'Pending', -- Status: Pending, Confirmed, Rejected
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Timestamp when deposit is created
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP -- Timestamp when deposit is updated
+    user_id INT REFERENCES users(id) ON DELETE CASCADE,
+    amount DECIMAL(20, 2) NOT NULL,
+    transaction_id VARCHAR(255) UNIQUE NOT NULL,
+    status VARCHAR(20) DEFAULT 'Pending',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Members Table: Represent many-to-many relationships for referrals
@@ -53,18 +53,18 @@ CREATE TABLE members (
 
 CREATE TABLE withdrawals (
     id SERIAL PRIMARY KEY,
-    user_id INT REFERENCES users(id) ON DELETE CASCADE, -- User requesting the withdrawal
-    user_wallet_id INT REFERENCES wallets(id) ON DELETE CASCADE, -- User's wallet for this network
-    withdraw_wallet VARCHAR(255) NOT NULL, -- External wallet address for the withdrawal
-    amount DECIMAL(20, 2) NOT NULL, -- Withdrawal amount
-    network VARCHAR(50) NOT NULL, -- Blockchain network (e.g., Solana, Tron, Ethereum)
-    status VARCHAR(20) DEFAULT 'Pending', -- Status: Pending, Approved, Rejected
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Timestamp when withdrawal was created
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP -- Timestamp when withdrawal was updated
+    user_id INT REFERENCES users(id) ON DELETE CASCADE,
+    user_wallet_id INT REFERENCES wallets(id) ON DELETE CASCADE,
+    withdraw_wallet VARCHAR(255) NOT NULL,
+    amount DECIMAL(20, 2) NOT NULL,
+    network VARCHAR(50) NOT NULL,
+    status VARCHAR(20) DEFAULT 'Pending',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE application_wallets (
     id SERIAL PRIMARY KEY,
-    network VARCHAR(50) NOT NULL UNIQUE, -- Blockchain network (e.g., Solana, Tron, Ethereum)
-    balance DECIMAL(20, 8) DEFAULT 0.0, -- Current balance for the application on this network
+    network VARCHAR(50) NOT NULL UNIQUE, 
+    balance DECIMAL(20, 8) DEFAULT 0.0
 );
