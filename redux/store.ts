@@ -4,6 +4,7 @@ import { appStateSlice } from './features/app-state-slice';
 import { authService } from './services/auth.service';
 import storage from 'redux-persist/lib/storage';
 import { usersService } from './services/users.service';
+import { walletsService } from './services/wallets.service';
 
 const rootReducer = combineReducers({
   // slices
@@ -11,6 +12,7 @@ const rootReducer = combineReducers({
   // services
   [authService.reducerPath]: authService.reducer,
   [usersService.reducerPath]: usersService.reducer,
+  [walletsService.reducerPath]: walletsService.reducer,
 });
 
 
@@ -31,6 +33,7 @@ export const store = configureStore({
     getDefaultMiddleware().concat([
       authService.middleware,
       usersService.middleware,
+      walletsService.middleware,
     ]),
 });
 

@@ -5,6 +5,7 @@ import { MemberTree } from '@/components/dashboard/MemberTree';
 import { DashboardLoadingState } from '@/components/dashboard/LoadingState';
 import { AppDispatch, RootState } from '@/redux/store';
 import { User } from '@/types/models';
+import { useGetUserWalletsQuery } from '@/redux/services/wallets.service';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -84,36 +85,25 @@ const recentActivity = [
   { id: 4, type: 'Withdrawal', amount: 300, date: '2024-02-26', status: 'Completed' },
 ];
 
-// Update wallet data with network-specific icons and colors
-const walletData = [
-  { 
-    network: 'ETH-Base', 
-    mainNetwork: 'Ethereum',
-    balance: 1235.50, 
-    address: '0x1234...5678',
-    icon: <Wallet className="w-5 h-5 text-blue-500" />,
-    color: 'blue'
-  },
-  { 
-    network: 'SOL', 
-    mainNetwork: 'Solana',
-    balance: 2750.80, 
-    address: 'Sol1234...5678',
-    icon: <Wallet className="w-5 h-5 text-purple-500" />,
-    color: 'purple'
-  },
-  { 
-    network: 'TRC-20', 
-    mainNetwork: 'Tron',
-    balance: 890.25, 
-    address: 'TR1234...5678',
-    icon: <Wallet className="w-5 h-5 text-red-500" />,
-    color: 'red'
-  },
-];
-
 export default function DashboardPage() {
   const dispatch = useDispatch<AppDispatch>();
+  const userId = useSelector((state: RootState) => state.appState.user.id);
+  const { data: wallets, isLoading } = useGetUserWalletsQuery(userId);
+
+  // Update the walletData array to use real data
+  const walletData = wallets?.map(wallet => ({
+    network: wallet.network,
+    mainNetwork: wallet.network === 'SOL' ? 'Solana' : 
+                 wallet.network === 'ETH-Base' ? 'Ethereum' : 'Tron',
+    balance: Number(wallet.balance),
+    address: wallet.public_key,
+    icon: <Wallet className={`w-5 h-5 text-${
+      wallet.network === 'SOL' ? 'blue' : 
+      wallet.network === 'ETH-Base' ? 'purple' : 'red'
+    }-500`} />,
+    color: wallet.network === 'SOL' ? 'blue' : 
+           wallet.network === 'ETH-Base' ? 'purple' : 'red'
+  })) || [];
 
   // Calculate total referral earnings
   const calculateReferralEarnings = (users: User[], userId: number, level: number = 1): number => {
