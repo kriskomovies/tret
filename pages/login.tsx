@@ -6,13 +6,17 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Eye, EyeOff } from 'lucide-react';
-import axios from 'axios';
+import { useSignInMutation } from '@/redux/services/auth.service';
+import { toast } from '@/hooks/use-toast';
+import { setLoggedIn } from '@/redux/features/app-state-slice';
+import { useDispatch } from 'react-redux';
 
 export default function LoginPage() {
   const router = useRouter();
+  const dispatch = useDispatch();
   const [showPassword, setShowPassword] = useState(false);
+  const [loginUser, { isLoading }] = useSignInMutation();
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -27,33 +31,23 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     setError('');
 
-    try {
-      const response = await axios.post('/api/auth/login', {
-        email: formData.email,
-        password: formData.password,
+    const result = await loginUser({ email: formData.email, password: formData.password });
+    const { data, error } = result;
+    if (!error) {
+      const { message, user } = data;
+      toast({
+        title: `${message} ${user.username}`,
       });
-
-      if (response.data.token) {
-        // Store the token
-        localStorage.setItem('token', response.data.token);
-        if (formData.rememberMe) {
-          localStorage.setItem('rememberMe', 'true');
-        }
-
-        // Redirect based on user role
-        if (response.data.user.role === 'admin') {
-          router.push('/admin/dashboard');
-        } else {
-          router.push('/dashboard');
-        }
-      }
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Login failed');
-    } finally {
-      setLoading(false);
+      dispatch(setLoggedIn(user));
+      await router.push('/dashboard');
+    } else {
+      toast({
+        variant: 'destructive',
+        title: 'Failed to login.',
+        description: `${error?.data?.error}`,
+      });
     }
   };
 
@@ -152,9 +146,9 @@ export default function LoginPage() {
             <Button
               type="submit"
               className="w-full"
-              disabled={loading}
+              disabled={isLoading}
             >
-              {loading ? 'Logging in...' : 'Log In'}
+              {isLoading ? 'Logging in...' : 'Log In'}
             </Button>
           </form>
 

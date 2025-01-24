@@ -1,12 +1,23 @@
 import { ReactNode } from 'react';
 import { Sidebar } from './Sidebar';
 import { Search, Bell, Settings, User } from 'lucide-react';
+import { useSelector } from 'react-redux';
+import { RootState } from '@/redux/store';
+import { useRouter } from 'next/router';
 
 interface MainLayoutProps {
   children: ReactNode;
 }
 
 export function MainLayout({ children }: MainLayoutProps) {
+  const isLoggedIn = useSelector((state: RootState) => state.appState.isLoggedIn);
+  const router = useRouter();
+  const isAuthPage = router.pathname.startsWith('/auth');
+
+  if (!isLoggedIn || isAuthPage) {
+    return <main className="h-screen">{children}</main>;
+  }
+
   return (
     <div className="flex h-screen bg-background">
       <Sidebar />

@@ -16,6 +16,8 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { setLoggedOut } from '@/redux/features/app-state-slice';
+import { useDispatch } from 'react-redux';
 
 const menuItems = [
   {
@@ -61,12 +63,12 @@ const menuItems = [
 ];
 
 export function Sidebar() {
+  const dispatch = useDispatch();
   const router = useRouter();
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   const handleSignOut = () => {
-    // Add sign out logic here
-    console.log('Signing out...');
+    dispatch(setLoggedOut());
   };
 
   return (

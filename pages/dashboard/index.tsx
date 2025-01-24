@@ -1,15 +1,11 @@
 import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { DollarSign, ShoppingCart, Eye, Wallet, ArrowUpRight, ArrowDownRight, Package, ExternalLink, Plus } from 'lucide-react';
-import { StatsCard } from '@/components/dashboard/StatsCard';
+import { Wallet, ArrowUpRight, ArrowDownRight, Package, ExternalLink, Plus } from 'lucide-react';
 import { MemberTree } from '@/components/dashboard/MemberTree';
 import { DashboardLoadingState } from '@/components/dashboard/LoadingState';
-import { fetchDashboardData } from '@/redux/features/dashboard-slice';
 import { AppDispatch, RootState } from '@/redux/store';
 import { User } from '@/types/models';
 
-import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -118,17 +114,6 @@ const walletData = [
 
 export default function DashboardPage() {
   const dispatch = useDispatch<AppDispatch>();
-  const { stats, loading } = useSelector(
-    (state: RootState) => state.dashboard
-  );
-
-  useEffect(() => {
-    dispatch(fetchDashboardData());
-  }, [dispatch]);
-
-  if (loading || !stats) {
-    return <DashboardLoadingState />;
-  }
 
   // Calculate total referral earnings
   const calculateReferralEarnings = (users: User[], userId: number, level: number = 1): number => {
@@ -217,7 +202,7 @@ export default function DashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-primary mb-2">${stats.total_profit.toLocaleString()}</p>
+            <p className="text-2xl font-bold text-primary mb-2">$0</p>
             <Progress value={75} className="w-full" />
             <p className="text-sm text-muted-foreground mt-2">75% of monthly target</p>
           </CardContent>
