@@ -7,12 +7,17 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Eye, EyeOff } from 'lucide-react';
 import axios from 'axios';
+import { useRegisterUserMutation } from '@/redux/services/users.service';
+import { toast } from '@/hooks/use-toast';
+import { setLoggedIn } from '@/redux/features/app-state-slice';
+import { useDispatch } from 'react-redux';
 
 export default function RegisterPage() {
   const router = useRouter();
+  const dispatch = useDispatch();
+  const [registerUser, { isLoading }] = useRegisterUserMutation();
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     username: '',
     email: '',
@@ -21,6 +26,7 @@ export default function RegisterPage() {
     referralCode: '',
     agreeToTerms: false,
   });
+ 
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -30,29 +36,28 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setError('');
+    const result = await registerUser({
+      username: formData.username,
+      email: formData.email,
+      password: formData.password,
+      phonenumber: formData.phonenumber || undefined,
+      referralCode: formData.referralCode || undefined,
+    });
+    const { data, error } = result;
 
-    try {
-      if (!formData.agreeToTerms) {
-        throw new Error('Please agree to the terms and conditions');
-      }
-
-      const response = await axios.post('/api/auth/register', {
-        username: formData.username,
-        email: formData.email,
-        password: formData.password,
-        phonenumber: formData.phonenumber || undefined,
-        referralCode: formData.referralCode || undefined,
+    if (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Failed to register user',
+        description: `${error.data.message}`,
       });
-
-      if (response.data.user) {
-        router.push('/login?registered=true');
-      }
-    } catch (err: any) {
-      setError(err.response?.data?.error || err.message || 'Registration failed');
-    } finally {
-      setLoading(false);
+    } else {
+      const { message, user } = data;
+      toast({
+        title: `${message} ${user.username}`,
+      });
+      dispatch(setLoggedIn(user));
+      await router.push('/');
     }
   };
 
@@ -178,9 +183,9 @@ export default function RegisterPage() {
             <Button
               type="submit"
               className="w-full"
-              disabled={loading}
+              disabled={isLoading}
             >
-              {loading ? 'Creating Account...' : 'Create Account'}
+              {isLoading ? 'Creating Account...' : 'Create Account'}
             </Button>
           </form>
 
