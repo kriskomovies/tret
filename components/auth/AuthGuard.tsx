@@ -3,7 +3,7 @@ import { useRouter } from 'next/router';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/redux/store';
 
-const publicPaths = ['/auth/login', '/auth/register'];
+const publicPaths = ['/login', '/register'];
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();

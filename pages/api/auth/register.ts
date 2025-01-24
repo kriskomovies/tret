@@ -1,65 +1,43 @@
-import { NextApiRequest, NextApiResponse } from 'next';
-import { PrismaClient } from '@prisma/client';
-import bcrypt from 'bcryptjs';
-
-const prisma = new PrismaClient();
-const ADMIN_PHRASE = process.env.ADMIN_PHRASE || 'test';
+import { prisma } from '@/lib/prisma';
+import type { NextApiRequest, NextApiResponse } from 'next';
+import { hash } from 'bcryptjs';
 
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+    return res.status(405).json({ message: 'Method not allowed' });
   }
 
   try {
-    const { username, email, password, phonenumber, referralCode } = req.body;
+    const { username, email, password, phonenumber, referral } = req.body;
 
-    // Check if user already exists
+    // Check if user exists
     const existingUser = await prisma.users.findFirst({
       where: {
         OR: [
           { email },
           { username },
-          phonenumber ? { phonenumber } : {},
+          ...(phonenumber ? [{ phonenumber }] : []),
         ],
       },
+      select: {
+        id: true,
+        email: true,
+        username: true,
+        phonenumber: true
+      }
     });
 
     if (existingUser) {
-      return res.status(400).json({ error: 'User already exists' });
-    }
-
-    // Determine if this is an admin registration
-    const isAdmin = referralCode === ADMIN_PHRASE;
-
-    // If this is an admin registration, check if an admin already exists
-    if (isAdmin) {
-      const existingAdmin = await prisma.users.findFirst({
-        where: { 
-          role: 'admin'
-        },
+      return res.status(400).json({
+        message: 'User with this email, username, or phone number already exists',
       });
-
-      if (existingAdmin) {
-        return res.status(400).json({ error: 'Admin account already exists' });
-      }
-    }
-
-    // Find referrer if referral code provided and not an admin registration
-    let referrerId = null;
-    if (referralCode && !isAdmin) {
-      const referrer = await prisma.users.findFirst({
-        where: { username: referralCode },
-      });
-      if (referrer) {
-        referrerId = referrer.id;
-      }
     }
 
     // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await hash(password, 12);
 
     // Create user
     const user = await prisma.users.create({
@@ -68,9 +46,7 @@ export default async function handler(
         email,
         password: hashedPassword,
         phonenumber,
-        referral: referrerId,
-        status: 'Active',
-        role: isAdmin ? 'admin' : 'user',
+        referral: referral ? parseInt(referral) : null,
       },
       select: {
         id: true,
@@ -79,26 +55,13 @@ export default async function handler(
         phonenumber: true,
         balance: true,
         status: true,
-        role: true,
-      },
+        created_at: true
+      }
     });
 
-    // If there's a referrer and not an admin registration, create the referral relationship
-    if (referrerId && !isAdmin) {
-      await prisma.members.create({
-        data: {
-          user_id: referrerId,
-          member_id: user.id,
-        },
-      });
-    }
-
-    return res.status(201).json({
-      message: `${isAdmin ? 'Admin' : 'User'} registered successfully`,
-      user,
-    });
+    return res.status(201).json(user);
   } catch (error) {
     console.error('Registration error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    return res.status(500).json({ message: 'Internal server error' });
   }
 } 
