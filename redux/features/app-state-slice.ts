@@ -1,47 +1,46 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
+export interface User {
+  id: number;
+  username: string;
+  email: string;
+  balance: number;
+  status: string;
+  membership: string;
+}
+
 export interface IAppState {
-  title: string;
-  selectedBuildingId: string;
   isLoggedIn: boolean;
-  user: {
-    id: string;
-    username: string;
-    email: string;
-    solWalletPublicKey: string;
-    tronBase58PublicKey: string;
-  };
+  user: User | null;
+  token: string | null;
 }
 
 const initialState: IAppState = {
-  title: '',
-  selectedBuildingId: '',
   isLoggedIn: false,
-  user: {} as any,
+  user: null,
+  token: null,
 };
 
 export const appStateSlice = createSlice({
   name: 'appState',
   initialState,
   reducers: {
-    setLoggedIn(state, action: PayloadAction<any>) {
+    setLoggedIn: (state, action: PayloadAction<{ user: User; token: string }>) => {
       state.isLoggedIn = true;
-      state.user = action.payload;
+      state.user = action.payload.user;
+      state.token = action.payload.token;
     },
-    setLoggedOut(state, action: PayloadAction<void>) {
+    setLoggedOut: (state) => {
       state.isLoggedIn = false;
-      state.user = {} as any;
+      state.user = null;
+      state.token = null;
     },
-    setUser(state, action: PayloadAction<any>) {
+    updateUser: (state, action: PayloadAction<User>) => {
       state.user = action.payload;
     },
   },
 });
 
-export const {
-  setLoggedIn,
-  setLoggedOut,
-  setUser,
-} = appStateSlice.actions;
+export const { setLoggedIn, setLoggedOut, updateUser } = appStateSlice.actions;
 
 export default appStateSlice.reducer;

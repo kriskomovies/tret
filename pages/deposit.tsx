@@ -1,101 +1,51 @@
 import { useState } from 'react';
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-} from '@/components/ui/card';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Copy, Wallet, ExternalLink, AlertCircle } from 'lucide-react';
+import { ManualDepositForm } from '@/components/deposits/ManualDepositForm';
+import { useGetDepositHistoryQuery } from '@/redux/services/deposits.service';
+import { QRCodeSVG } from 'qrcode.react';
+import { Copy, AlertCircle, ExternalLink, Info } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { useSelector } from 'react-redux';
+import { RootState } from '@/redux/store';
+import { useGetUserWalletsQuery } from '@/redux/services/wallets.service';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { skipToken } from '@reduxjs/toolkit/query';
 
-// Mock data for deposits
-const mockDeposits = [
-  {
-    id: 1,
-    amount: '0.5',
-    currency: 'ETH',
-    transactionId: '0x1234567890abcdef1234567890abcdef12345678',
-    status: 'Confirmed',
-    createdAt: '2024-01-23T10:34:00Z',
-  },
-  {
-    id: 2,
-    amount: '1.2',
-    currency: 'SOL',
-    transactionId: '5GSq2VQXXJviKb1ZHvAkVBWgCJJYpw3ic7jRp1',
-    status: 'Pending',
-    createdAt: '2024-01-22T15:20:00Z',
-  },
-  {
-    id: 3,
-    amount: '100',
-    currency: 'TRX',
-    transactionId: 'TRXa1b2c3d4e5f6g7h8i9j0',
-    status: 'Rejected',
-    createdAt: '2024-01-21T09:15:00Z',
-  },
-];
+// Platform wallet addresses (replace with actual addresses)
+const PLATFORM_WALLETS = {
+  'ETH-Base': '0x1234567890abcdef1234567890abcdef12345678',
+  'SOL': 'SoLaNaWaLlEtAdDrEsS123456789abcdef',
+  'TRC-20': 'TRXa1b2c3d4e5f6g7h8i9j0kl',
+};
 
-// Wallet options with their details
-const walletOptions = [
-  {
-    id: 'eth-base',
-    name: 'Ethereum',
-    network: 'ETH-Base',
-    address: '0x1234567890abcdef1234567890abcdef12345678',
-    balance: 1235.50,
-    icon: <Wallet className="w-4 h-4 text-blue-500" />,
-  },
-  {
-    id: 'sol',
-    name: 'Solana',
-    network: 'SOL',
-    address: '5GSq2VQXXJviKb1ZHvAkVBWgCJJYpw3ic7jRp1',
-    balance: 2750.80,
-    icon: <Wallet className="w-4 h-4 text-purple-500" />,
-  },
-  {
-    id: 'trc20',
-    name: 'Tron',
-    network: 'TRC-20',
-    address: 'TRXa1b2c3d4e5f6g7h8i9j0',
-    balance: 890.25,
-    icon: <Wallet className="w-4 h-4 text-red-500" />,
-  },
-];
+const NETWORK_TOKENS = {
+  'ETH-Base': 'USDT/USDC on Base network',
+  'SOL': 'USDT/USDC (SPL)',
+  'TRC-20': 'USDT/USDC (TRC-20)',
+};
 
 export default function DepositPage() {
-  const [selectedWallet, setSelectedWallet] = useState(walletOptions[0]);
+  const [selectedNetwork, setSelectedNetwork] = useState<string>('ETH-Base');
+  const { data: depositHistory, isLoading: isLoadingHistory } = useGetDepositHistoryQuery();
   const [copySuccess, setCopySuccess] = useState(false);
+  const userId = useSelector((state: RootState) => state.appState.user?.id);
+  const { data: wallets } = useGetUserWalletsQuery(userId!, { skip: !userId });
 
-  const handleWalletSelect = (value: string) => {
-    const wallet = walletOptions.find(w => w.id === value);
-    if (wallet) setSelectedWallet(wallet);
-  };
+  const selectedWallet = wallets?.find(w => w.network === selectedNetwork);
 
   const copyToClipboard = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
       setCopySuccess(true);
+      toast({
+        title: 'Address copied',
+        description: 'Wallet address copied to clipboard',
+      });
       setTimeout(() => setCopySuccess(false), 2000);
     } catch (err) {
       console.error('Failed to copy text: ', err);
@@ -117,159 +67,170 @@ export default function DepositPage() {
   };
 
   const getStatusVariant = (status: string) => {
-    switch (status) {
-      case 'Confirmed':
+    switch (status.toLowerCase()) {
+      case 'completed':
         return 'default';
-      case 'Pending':
+      case 'pending':
         return 'secondary';
-      case 'Rejected':
+      case 'failed':
         return 'destructive';
       default:
         return 'default';
     }
   };
 
+  const getExplorerUrl = (network: string, txId: string) => {
+    switch (network) {
+      case 'ETH-Base':
+        return `https://basescan.org/tx/${txId}`;
+      case 'SOL':
+        return `https://solscan.io/tx/${txId}`;
+      case 'TRC-20':
+        return `https://tronscan.org/#/transaction/${txId}`;
+      default:
+        return '#';
+    }
+  };
+
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-8">
-      {/* Wallet Selection & Details Section */}
-      <div className="space-y-4">
-        <h1 className="text-2xl font-bold">Deposit</h1>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Select Wallet</CardTitle>
-              <CardDescription>Choose the network you want to deposit to</CardDescription>
-            </CardHeader>
-            <CardContent>
+    <div className="container mx-auto p-6 space-y-6">
+      <div className="grid gap-6 md:grid-cols-2">
+        <Card className="bg-white transition-all duration-300">
+          <CardHeader>
+            <CardTitle>Deposit</CardTitle>
+            <CardDescription>
+              Select a network and send USDT or USDC to your wallet address
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="network">Network</Label>
               <Select
-                onValueChange={handleWalletSelect}
-                defaultValue={selectedWallet.id}
+                value={selectedNetwork}
+                onValueChange={setSelectedNetwork}
               >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select a wallet" />
+                <SelectTrigger id="network" className="bg-white">
+                  <SelectValue placeholder="Select network" />
                 </SelectTrigger>
                 <SelectContent>
-                  {walletOptions.map((wallet) => (
-                    <SelectItem key={wallet.id} value={wallet.id}>
-                      <div className="flex items-center gap-2">
-                        {wallet.icon}
-                        <span>{wallet.name} ({wallet.network})</span>
-                      </div>
-                    </SelectItem>
-                  ))}
+                  <SelectItem value="ETH-Base">Ethereum (Base)</SelectItem>
+                  <SelectItem value="SOL">Solana</SelectItem>
+                  <SelectItem value="TRC-20">Tron (TRC-20)</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
 
-              <div className="mt-4 space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Network</span>
-                  <span className="font-medium">{selectedWallet.network}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Balance</span>
-                  <span className="font-medium">${selectedWallet.balance.toLocaleString()}</span>
+            <div className="p-4 border rounded-lg space-y-4">
+              <div className="flex flex-col items-center space-y-4">
+                <QRCodeSVG
+                  value={selectedWallet?.public_key || ''}
+                  size={176}
+                  bgColor="#FFFFFF"
+                  fgColor="#000000"
+                  level="L"
+                  includeMargin={false}
+                  className="rounded-md"
+                />
+                
+                <div className="flex items-center gap-2">
+                  <code className="bg-muted px-3 py-2 rounded-md text-sm transition-colors duration-200 hover:bg-muted/80">
+                    {selectedWallet ? truncateAddress(selectedWallet.public_key) : 'Loading...'}
+                  </code>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => selectedWallet && copyToClipboard(selectedWallet.public_key)}
+                    className={cn(
+                      "transition-all duration-300",
+                      copySuccess ? "text-green-500 border-green-500" : "hover:bg-primary/5"
+                    )}
+                    disabled={!selectedWallet}
+                  >
+                    {copySuccess ? "Copied!" : <Copy className="h-4 w-4" />}
+                  </Button>
                 </div>
               </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="space-y-6">
+          <Card className="bg-white transition-all duration-300">
+            <CardHeader>
+              <CardTitle>Manual Validation</CardTitle>
+              <CardDescription>
+                If your deposit is not automatically detected, you can validate it manually
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ManualDepositForm selectedNetwork={selectedNetwork} />
             </CardContent>
           </Card>
-
-          <Alert>
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              Deposits may take up to 15 minutes to reflect in your account. Make sure to send only supported tokens to this address.
-            </AlertDescription>
-          </Alert>
         </div>
       </div>
 
-      {/* QR Code and Address Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Deposit to {selectedWallet.name}</CardTitle>
-          <CardDescription>
-            Scan the QR code or copy the wallet address below to deposit funds
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col items-center">
-          <div className="w-48 h-48 bg-gray-100 rounded-lg mb-4 flex items-center justify-center">
-            {/* QR Code placeholder - you'll need to add a QR code library */}
-            <span className="text-sm text-muted-foreground">QR Code</span>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <code className="bg-muted px-2 py-1 rounded text-sm">
-              {truncateAddress(selectedWallet.address)}
-            </code>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => copyToClipboard(selectedWallet.address)}
-              className={cn(
-                "transition-colors",
-                copySuccess && "text-green-500 border-green-500"
-              )}
-            >
-              {copySuccess ? "Copied!" : <Copy className="h-4 w-4" />}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Deposits History Section */}
-      <Card>
+      <Card className="bg-white transition-all duration-300">
         <CardHeader>
           <CardTitle>Deposit History</CardTitle>
           <CardDescription>Track all your deposit transactions</CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Amount</TableHead>
-                <TableHead>Transaction ID</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead className="w-[100px]">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {mockDeposits.map((deposit) => (
-                <TableRow key={deposit.id}>
-                  <TableCell className="font-medium">
-                    {deposit.amount} {deposit.currency}
-                  </TableCell>
-                  <TableCell className="font-mono text-sm">
-                    {truncateAddress(deposit.transactionId)}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={getStatusVariant(deposit.status)}>
-                      {deposit.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{formatDate(deposit.createdAt)}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => copyToClipboard(deposit.transactionId)}
-                      >
-                        <Copy className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => window.open(`https://etherscan.io/tx/${deposit.transactionId}`, '_blank')}
-                      >
-                        <ExternalLink className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <div className="relative overflow-x-auto">
+            <table className="w-full text-sm text-left">
+              <thead className="text-xs uppercase bg-muted/50">
+                <tr>
+                  <th className="px-6 py-3">Amount</th>
+                  <th className="px-6 py-3">Transaction ID</th>
+                  <th className="px-6 py-3">Status</th>
+                  <th className="px-6 py-3">Date</th>
+                  <th className="px-6 py-3">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {depositHistory?.map((deposit) => (
+                  <tr 
+                    key={deposit.id}
+                    className="border-b transition-colors duration-200 hover:bg-muted/50"
+                  >
+                    <td className="px-6 py-4 font-medium">
+                      {deposit.amount} {deposit.network}
+                    </td>
+                    <td className="px-6 py-4 font-mono">
+                      {truncateAddress(deposit.transaction_id)}
+                    </td>
+                    <td className="px-6 py-4">
+                      <Badge variant={getStatusVariant(deposit.status)}>
+                        {deposit.status}
+                      </Badge>
+                    </td>
+                    <td className="px-6 py-4">
+                      {formatDate(deposit.created_at)}
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => copyToClipboard(deposit.transaction_id)}
+                          className="transition-colors duration-200 hover:bg-primary/5"
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => window.open(getExplorerUrl(deposit.network, deposit.transaction_id), '_blank')}
+                          className="transition-colors duration-200 hover:bg-primary/5"
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </CardContent>
       </Card>
     </div>

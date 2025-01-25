@@ -5,6 +5,7 @@ import { authService } from './services/auth.service';
 import storage from 'redux-persist/lib/storage';
 import { usersService } from './services/users.service';
 import { walletsService } from './services/wallets.service';
+import { depositsService } from './services/deposits.service';
 
 const rootReducer = combineReducers({
   // slices
@@ -13,6 +14,7 @@ const rootReducer = combineReducers({
   [authService.reducerPath]: authService.reducer,
   [usersService.reducerPath]: usersService.reducer,
   [walletsService.reducerPath]: walletsService.reducer,
+  [depositsService.reducerPath]: depositsService.reducer,
 });
 
 
@@ -34,6 +36,7 @@ export const store = configureStore({
       authService.middleware,
       usersService.middleware,
       walletsService.middleware,
+      depositsService.middleware,
     ]),
 });
 

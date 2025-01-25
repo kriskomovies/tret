@@ -36,11 +36,11 @@ export default function LoginPage() {
     const result = await loginUser({ email: formData.email, password: formData.password });
     const { data, error } = result;
     if (!error) {
-      const { message, user } = data;
+      const { message, user, token } = data;
       toast({
         title: `${message} ${user.username}`,
       });
-      dispatch(setLoggedIn(user));
+      dispatch(setLoggedIn({ user, token }));
       await router.push('/dashboard');
     } else {
       toast({

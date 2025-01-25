@@ -6,6 +6,8 @@ import { DashboardLoadingState } from '@/components/dashboard/LoadingState';
 import { AppDispatch, RootState } from '@/redux/store';
 import { User } from '@/types/models';
 import { useGetUserWalletsQuery } from '@/redux/services/wallets.service';
+import { useRouter } from 'next/router';
+import { CopyButton } from '@/components/ui/copy-button';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -89,6 +91,7 @@ export default function DashboardPage() {
   const dispatch = useDispatch<AppDispatch>();
   const userId = useSelector((state: RootState) => state.appState.user.id);
   const { data: wallets, isLoading } = useGetUserWalletsQuery(userId);
+  const router = useRouter();
 
   // Update the walletData array to use real data
   const walletData = wallets?.map(wallet => ({
@@ -122,6 +125,13 @@ export default function DashboardPage() {
   const rootUser = mockUsers.find(user => !user.referral);
   const totalReferralEarnings = rootUser ? calculateReferralEarnings(mockUsers, rootUser.id) : 0;
 
+  const handleDeposit = (network: string) => {
+    router.push({
+      pathname: '/deposit',
+      query: { network },
+    });
+  };
+
   return (
     <div className="p-6 space-y-6">
       {/* Page Header */}
@@ -154,9 +164,11 @@ export default function DashboardPage() {
                 <p className="text-2xl font-bold text-gray-900">
                   ${wallet.balance.toLocaleString()}
                 </p>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <p className="font-mono">{wallet.address}</p>
-                </div>
+                <CopyButton 
+                  value={wallet.address}
+                  displayValue={wallet.address}
+                  variant="address"
+                />
               </div>
             </CardContent>
             <CardContent className="pt-0">
@@ -165,18 +177,16 @@ export default function DashboardPage() {
                   variant="ghost" 
                   size="sm" 
                   className={`text-${wallet.color}-500 hover:text-${wallet.color}-600 hover:bg-${wallet.color}-50 gap-1`}
+                  onClick={() => handleDeposit(wallet.network)}
                 >
                   <Plus className="w-4 h-4" />
                   Deposit
                 </Button>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className={`text-${wallet.color}-500 hover:text-${wallet.color}-600 hover:bg-${wallet.color}-50 gap-1`}
-                >
-                  <ExternalLink className="w-4 h-4" />
-                  View Details
-                </Button>
+                <CopyButton 
+                  value={wallet.address}
+                  displayValue="Copy Address"
+                  color={wallet.color}
+                />
               </div>
             </CardContent>
           </Card>
