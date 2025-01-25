@@ -12,25 +12,17 @@ import { cn } from '@/lib/utils';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/redux/store';
 import { useGetUserWalletsQuery } from '@/redux/services/wallets.service';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { skipToken } from '@reduxjs/toolkit/query';
-
-// Platform wallet addresses (replace with actual addresses)
-const PLATFORM_WALLETS = {
-  'ETH-Base': '0x1234567890abcdef1234567890abcdef12345678',
-  'SOL': 'SoLaNaWaLlEtAdDrEsS123456789abcdef',
-  'TRC-20': 'TRXa1b2c3d4e5f6g7h8i9j0kl',
-};
 
 const NETWORK_TOKENS = {
   'ETH-Base': 'USDT/USDC on Base network',
   'SOL': 'USDT/USDC (SPL)',
   'TRC-20': 'USDT/USDC (TRC-20)',
-};
+} as const;
+
+type Network = keyof typeof NETWORK_TOKENS;
 
 export default function DepositPage() {
-  const [selectedNetwork, setSelectedNetwork] = useState<string>('ETH-Base');
+  const [selectedNetwork, setSelectedNetwork] = useState<Network>('ETH-Base');
   const { data: depositHistory, isLoading: isLoadingHistory } = useGetDepositHistoryQuery();
   const [copySuccess, setCopySuccess] = useState(false);
   const userId = useSelector((state: RootState) => state.appState.user?.id);
@@ -94,31 +86,38 @@ export default function DepositPage() {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
+      <h1 className="text-3xl font-bold">Deposit</h1>
       <div className="grid gap-6 md:grid-cols-2">
         <Card className="bg-white transition-all duration-300">
           <CardHeader>
-            <CardTitle>Deposit</CardTitle>
+            <CardTitle>Select Network</CardTitle>
             <CardDescription>
               Select a network and send USDT or USDC to your wallet address
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="network">Network</Label>
-              <Select
-                value={selectedNetwork}
-                onValueChange={setSelectedNetwork}
-              >
-                <SelectTrigger id="network" className="bg-white">
-                  <SelectValue placeholder="Select network" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ETH-Base">Ethereum (Base)</SelectItem>
-                  <SelectItem value="SOL">Solana</SelectItem>
-                  <SelectItem value="TRC-20">Tron (TRC-20)</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="flex flex-wrap gap-2">
+              {(Object.keys(NETWORK_TOKENS) as Network[]).map((network) => (
+                <Button
+                  key={network}
+                  variant={selectedNetwork === network ? 'default' : 'outline'}
+                  onClick={() => setSelectedNetwork(network)}
+                  className="flex-1"
+                >
+                  {network === 'ETH-Base' ? 'Ethereum (Base)' :
+                   network === 'SOL' ? 'Solana' :
+                   'Tron (TRC-20)'}
+                </Button>
+              ))}
             </div>
+
+            <Alert className="bg-yellow-50 border-yellow-200">
+              <AlertCircle className="h-4 w-4 text-yellow-500" />
+              <AlertDescription className="text-yellow-700">
+                Important: Send only {NETWORK_TOKENS[selectedNetwork]} to this address.
+                Sending other tokens may result in permanent loss.
+              </AlertDescription>
+            </Alert>
 
             <div className="p-4 border rounded-lg space-y-4">
               <div className="flex flex-col items-center space-y-4">

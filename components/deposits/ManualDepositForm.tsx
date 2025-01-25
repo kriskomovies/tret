@@ -14,6 +14,7 @@ import { useValidateDepositMutation } from '@/redux/services/deposits.service';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/redux/store';
 import { Loader2 } from 'lucide-react';
+import { useGetUserWalletsQuery } from '@/redux/services/wallets.service';
 
 // Transaction ID validation patterns
 const TX_PATTERNS = {
@@ -30,6 +31,7 @@ export function ManualDepositForm({ selectedNetwork }: ManualDepositFormProps) {
   const [txId, setTxId] = useState('');
   const [validateDeposit, { isLoading }] = useValidateDepositMutation();
   const userId = useSelector((state: RootState) => state.appState.user?.id);
+  const { data: wallets } = useGetUserWalletsQuery(userId!, { skip: !userId });
 
   const validateTransactionId = (network: string, txId: string) => {
     const pattern = TX_PATTERNS[network as keyof typeof TX_PATTERNS];
@@ -58,6 +60,17 @@ export function ManualDepositForm({ selectedNetwork }: ManualDepositFormProps) {
       return;
     }
 
+    // Get the wallet ID for the selected network
+    const selectedWallet = wallets?.find(w => w.network === selectedNetwork);
+    if (!selectedWallet) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'No wallet found for selected network',
+      });
+      return;
+    }
+
     // Validate transaction ID format
     if (!validateTransactionId(selectedNetwork, txId)) {
       toast({
@@ -78,6 +91,7 @@ export function ManualDepositForm({ selectedNetwork }: ManualDepositFormProps) {
         txId,
         network: selectedNetwork,
         userId,
+        walletId: selectedWallet.id,
       }).unwrap();
 
       if (result.success) {

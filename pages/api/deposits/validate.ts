@@ -47,7 +47,7 @@ export default async function handler(
   }
 
   try {
-    const { txId, network, userId } = req.body;
+    const { txId, network, userId, walletId } = req.body;
 
     // Validate required fields
     if (!txId || !network || !userId) {
@@ -296,27 +296,42 @@ export default async function handler(
 
     if (validationResult?.success) {
       try {
-        // Create transaction record
-        const transaction = await prisma.deposits.create({
-          data: {
-            user_id: userId,
-            amount: validationResult.amount,
-            status: validationResult.status,
-            transaction_id: txId,
-            network: network,
-            from_address: validationResult.from,
-            token: validationResult.token
-          },
-        });
-
-        // Update user balance
-        await prisma.users.update({
-          where: { id: userId },
-          data: {
-            balance: {
-              increment: validationResult.amount,
+        // Create transaction record and update balances in a transaction
+        const transaction = await prisma.$transaction(async (tx) => {
+          // Create deposit record
+          const deposit = await tx.deposits.create({
+            data: {
+              user_id: userId,
+              amount: validationResult.amount,
+              status: validationResult.status,
+              transaction_id: txId,
+              network: network,
+              from_address: validationResult.from,
+              token: validationResult.token
             },
-          },
+          });
+
+          // Update user balance
+          await tx.users.update({
+            where: { id: userId },
+            data: {
+              balance: {
+                increment: validationResult.amount,
+              },
+            },
+          });
+
+          // Update wallet balance
+          await tx.wallets.update({
+            where: { id: walletId },
+            data: {
+              balance: {
+                increment: validationResult.amount,
+              },
+            },
+          });
+
+          return deposit;
         });
 
         return res.status(200).json({

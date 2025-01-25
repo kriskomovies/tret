@@ -5,6 +5,7 @@ export interface ValidateDepositRequest {
   txId: string;
   network: string;
   userId: number;
+  walletId: number;
 }
 
 export interface Transaction {
